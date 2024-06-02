@@ -8,7 +8,7 @@ async function awaitPicksSelection() {
     console.log('Iniciando seleção de picks...');
     try {
         const response = await $.ajax({
-            url: 'http://127.0.0.1:9512/picks',
+            url: 'http://local.marcosbrendon.com:9512/picks',
             type: 'GET',
             dataType: 'json'
         });
