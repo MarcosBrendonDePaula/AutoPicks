@@ -8,6 +8,7 @@ app.use(express.json());
 app.use(cors()); // Use o middleware cors para permitir todas as origens
 
 app.get('/picks', (req, res) => {
+    console.log(`requisitado!`);
     fs.readFile('picks.json', 'utf8', (err, data) => {
         if (err) {
             if (err.code === 'ENOENT') {
