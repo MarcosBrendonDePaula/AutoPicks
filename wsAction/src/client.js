@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WebSocket Client for Tampermonkey
 // @namespace    http://tampermonkey.net/
-// @version      0.12
+// @version      0.13
 // @description  Connects to a secure WebSocket server and performs actions based on commands received
 // @author       Your Name
 // @match        *://*/*
@@ -11,17 +11,21 @@
 (function () {
     'use strict';
 
-    // Incluindo a biblioteca jQuery e Socket.IO diretamente no script
+    // Incluindo a biblioteca jQuery, SweetAlert e Socket.IO diretamente no script
     const jqueryScript = document.createElement('script');
     jqueryScript.src = 'https://code.jquery.com/jquery-3.6.0.min.js';
     document.head.appendChild(jqueryScript);
+
+    const sweetAlertScript = document.createElement('script');
+    sweetAlertScript.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
+    document.head.appendChild(sweetAlertScript);
 
     const socketScript = document.createElement('script');
     socketScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.0/socket.io.js'; // Caminho para a biblioteca Socket.IO
     document.head.appendChild(socketScript);
 
     function waitForScriptsToLoad(callback) {
-        if (typeof jQuery !== 'undefined' && typeof io !== 'undefined') {
+        if (typeof jQuery !== 'undefined' && typeof io !== 'undefined' && typeof Swal !== 'undefined') {
             callback();
         } else {
             setTimeout(() => waitForScriptsToLoad(callback), 100);
@@ -94,19 +98,21 @@
                 return paths.length ? `/${paths.join('/')}` : null;
             }
 
-            // Adiciona um botão na página para tornar o cliente o mestre
+            // Função para adicionar o botão de controle mestre após 10 segundos
             function addMasterControlButton() {
-                const button = document.createElement('button');
-                button.innerText = 'Tornar-se Mestre';
-                button.style.position = 'fixed';
-                button.style.top = '10px';
-                button.style.right = '10px';
-                button.style.zIndex = 1000;
-                button.addEventListener('click', () => {
-                    isMaster = true;
-                    alert('Este cliente agora é o mestre.');
-                });
-                document.body.appendChild(button);
+                setTimeout(() => {
+                    const button = document.createElement('button');
+                    button.innerText = 'Tornar-se Mestre';
+                    button.style.position = 'fixed';
+                    button.style.bottom = '10px';
+                    button.style.right = '10px';
+                    button.style.zIndex = 1000;
+                    button.addEventListener('click', () => {
+                        isMaster = true;
+                        Swal.fire('Mestre', 'Este cliente agora é o mestre.', 'success');
+                    });
+                    document.body.appendChild(button);
+                }, 10000);
             }
 
             socket.on('connect', () => {
@@ -134,6 +140,9 @@
                         if (!payload) return;
                         actionQueue.push({ payload });
                         if (!isProcessing) processActionQueue(); // Inicia o processamento se a fila não estiver sendo processada
+                    } else if (command === 'setMaxDelay') {
+                        maxDelay = payload;
+                        Swal.fire('Atualizado!', `Novo tempo máximo de atraso definido para ${maxDelay / 1000} segundos.`, 'success');
                     }
                 });
             });
@@ -212,7 +221,7 @@
             document.addEventListener('keydown', (event) => {
                 if (event.ctrlKey && event.key === 'm') {
                     isMaster = true;
-                    alert('Este cliente agora é o mestre.');
+                    Swal.fire('Mestre', 'Este cliente agora é o mestre.', 'success');
                 } else if (isMaster && event.ctrlKey && event.key === 'Enter') {
                     sendCommand('global:control', 'Valor de exemplo');
                 } else if (isMaster && event.ctrlKey && event.key === 'b') {
@@ -220,11 +229,25 @@
                     const selector = 'button.exemplo'; // Troque pelo seletor do botão que deseja controlar
                     sendCommand('button:click', selector);
                 } else if (event.ctrlKey && event.key === 'd') {
-                    const newMaxDelay = prompt('Digite o novo tempo máximo de atraso em segundos:');
-                    if (newMaxDelay) {
-                        maxDelay = parseInt(newMaxDelay) * 1000;
-                        alert(`Novo tempo máximo de atraso definido para ${maxDelay / 1000} segundos.`);
-                    }
+                    Swal.fire({
+                        title: 'Definir atraso máximo',
+                        input: 'number',
+                        inputLabel: 'Digite o novo tempo máximo de atraso em segundos',
+                        inputValue: maxDelay / 1000,
+                        showCancelButton: true,
+                        inputValidator: (value) => {
+                            if (!value || isNaN(value) || value <= 0) {
+                                return 'Por favor, insira um valor válido!';
+                            }
+                            return null;
+                        }
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            maxDelay = parseInt(result.value) * 1000;
+                            Swal.fire('Atualizado!', `Novo tempo máximo de atraso definido para ${maxDelay / 1000} segundos.`, 'success');
+                            sendCommand('setMaxDelay', maxDelay);
+                        }
+                    });
                 }
             });
 

@@ -110,7 +110,8 @@ function showMenu() {
     4. Enviar comando global de controle
     5. Enviar comando para clicar em um botão
     6. Enviar comando para recarregar a página
-    7. Sair
+    7. Definir atraso máximo
+    8. Sair
     `);
 }
 
@@ -158,6 +159,15 @@ function promptReloadPage() {
     showMenu();
 }
 
+function promptSetMaxDelay() {
+    rl.question('Digite o novo tempo máximo de atraso em segundos: ', (delay) => {
+        const maxDelay = parseInt(delay) * 1000;
+        io.emit('command', { command: 'setMaxDelay', data: maxDelay });
+        console.log(`Novo tempo máximo de atraso definido para ${delay} segundos e enviado para todos os clientes.`);
+        showMenu();
+    });
+}
+
 rl.on('line', (input) => {
     const option = input.trim();
     switch (option) {
@@ -180,6 +190,9 @@ rl.on('line', (input) => {
             promptReloadPage();
             break;
         case '7':
+            promptSetMaxDelay();
+            break;
+        case '8':
             rl.close();
             break;
         default:
