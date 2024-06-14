@@ -127,7 +127,8 @@
                     const { command, data: payload } = data;
                     console.log(`Recebeu comando: ${command}`);
                     if (command === 'browser:openPage') {
-                        window.location.href = payload;
+                        console.log(data)
+                        window.location.href = data.payload;
                     } else if (command === 'browser:reloadPage') {
                         window.location.reload();
                     } else if (command === 'blockpick:collectRewards') {
