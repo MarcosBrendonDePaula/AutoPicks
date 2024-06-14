@@ -56,6 +56,11 @@ io.on('connection', (socket) => {
         console.log('Cliente desconectado:', socket.id);
         connectedClients.delete(socket);
     });
+
+    // Recebendo comandos do mestre e retransmitindo para todos os clientes conectados
+    socket.on('master:command', (data) => {
+        io.emit('command', data);
+    });
 });
 
 // Iniciando os servidores WebSocket
@@ -66,67 +71,6 @@ httpServerWS.listen(PORT_WS_HTTP, () => {
 httpsServerWS.listen(PORT_WS_HTTPS, () => {
     console.log(`WebSocket HTTPS Server is running on https://localhost:${PORT_WS_HTTPS}`);
 });
-
-// Criando a interface de linha de comando (CLI)
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
-
-function showMenu() {
-    console.log(`
-    Escolha uma opção:
-    1. Listar clientes conectados
-    2. Enviar comando para abrir uma página
-    3. Enviar comando para coletar recompensas
-    4. Sair
-    `);
-}
-
-function listConnectedClients() {
-    console.log('Clientes conectados:');
-    connectedClients.forEach(client => {
-        console.log(`- ID: ${client.id}`);
-    });
-    showMenu();
-}
-
-function promptOpenPage() {
-    rl.question('Digite a URL da página para abrir: ', (url) => {
-        io.emit('browser:openPage', url); // Envia o comando para todos os clientes conectados
-        console.log(`Comando para abrir a página "${url}" enviado.`);
-        showMenu();
-    });
-}
-
-function promptCollectRewards() {
-    io.emit('blockpick:collectRewards'); // Envia o comando para todos os clientes conectados
-    console.log('Comando para coletar recompensas enviado.');
-    showMenu();
-}
-
-rl.on('line', (input) => {
-    const option = input.trim();
-    switch (option) {
-        case '1':
-            listConnectedClients();
-            break;
-        case '2':
-            promptOpenPage();
-            break;
-        case '3':
-            promptCollectRewards();
-            break;
-        case '4':
-            rl.close();
-            break;
-        default:
-            console.log('Opção inválida. Tente novamente.');
-            showMenu();
-    }
-});
-
-showMenu();
 
 // Servidor HTTP para servir o arquivo client.js
 const httpServer = http.createServer((req, res) => {
@@ -150,3 +94,98 @@ const httpServer = http.createServer((req, res) => {
 httpServer.listen(PORT_HTTP, () => {
     console.log(`HTTP Server is running on http://localhost:${PORT_HTTP}`);
 });
+
+// Interface de linha de comando (CLI) para enviar comandos
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+function showMenu() {
+    console.log(`
+    Escolha uma opção:
+    1. Listar clientes conectados
+    2. Enviar comando para abrir uma página
+    3. Enviar comando para coletar recompensas
+    4. Enviar comando global de controle
+    5. Enviar comando para clicar em um botão
+    6. Enviar comando para recarregar a página
+    7. Sair
+    `);
+}
+
+function listConnectedClients() {
+    console.log('Clientes conectados:');
+    connectedClients.forEach(client => {
+        console.log(`- ID: ${client.id}`);
+    });
+    showMenu();
+}
+
+function promptOpenPage() {
+    rl.question('Digite a URL da página para abrir: ', (url) => {
+        io.emit('command', { command: 'browser:openPage', payload: url });
+        console.log(`Comando para abrir a página "${url}" enviado.`);
+        showMenu();
+    });
+}
+
+function promptCollectRewards() {
+    io.emit('command', { command: 'blockpick:collectRewards' });
+    console.log('Comando para coletar recompensas enviado.');
+    showMenu();
+}
+
+function promptGlobalControl() {
+    rl.question('Digite o valor para preencher os inputs: ', (value) => {
+        io.emit('command', { command: 'global:control', payload: value });
+        console.log('Comando global de controle enviado.');
+        showMenu();
+    });
+}
+
+function promptClickButton() {
+    rl.question('Digite o seletor do botão para clicar: ', (selector) => {
+        io.emit('command', { command: 'button:click', payload: selector });
+        console.log(`Comando para clicar no botão "${selector}" enviado.`);
+        showMenu();
+    });
+}
+
+function promptReloadPage() {
+    io.emit('command', { command: 'browser:reloadPage' });
+    console.log('Comando para recarregar a página enviado.');
+    showMenu();
+}
+
+rl.on('line', (input) => {
+    const option = input.trim();
+    switch (option) {
+        case '1':
+            listConnectedClients();
+            break;
+        case '2':
+            promptOpenPage();
+            break;
+        case '3':
+            promptCollectRewards();
+            break;
+        case '4':
+            promptGlobalControl();
+            break;
+        case '5':
+            promptClickButton();
+            break;
+        case '6':
+            promptReloadPage();
+            break;
+        case '7':
+            rl.close();
+            break;
+        default:
+            console.log('Opção inválida. Tente novamente.');
+            showMenu();
+    }
+});
+
+showMenu();
