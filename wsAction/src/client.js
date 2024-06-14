@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WebSocket Client for Tampermonkey
 // @namespace    http://tampermonkey.net/
-// @version      0.9
+// @version      0.12
 // @description  Connects to a secure WebSocket server and performs actions based on commands received
 // @author       Your Name
 // @match        *://*/*
@@ -33,6 +33,29 @@
             const socket = io('https://127.0.0.1:9515/', { secure: true }); // Conexão segura via HTTPS
 
             let isMaster = false; // Variável para controlar se o cliente é o mestre
+            let maxDelay = 5000; // Tempo máximo de atraso em milissegundos
+            const actionQueue = []; // Fila de ações
+            let isProcessing = false; // Variável para verificar se a fila está sendo processada
+            let isExecuting = false; // Variável para verificar se uma ação replicada está sendo executada
+
+            // Função para processar a fila de ações
+            function processActionQueue() {
+                if (actionQueue.length === 0) {
+                    isProcessing = false; // Fila vazia, definir isProcessing como falso
+                    return;
+                }
+
+                isProcessing = true; // Iniciar processamento
+                const { payload } = actionQueue.shift();
+                const delay = Math.floor(Math.random() * maxDelay) + 1000; // Atraso aleatório entre 1 e maxDelay segundos
+
+                setTimeout(() => {
+                    isExecuting = true;
+                    executeReplicatedAction(payload);
+                    isExecuting = false;
+                    processActionQueue(); // Processar próxima ação na fila
+                }, delay);
+            }
 
             // Função para enviar comandos
             function sendCommand(command, data) {
@@ -45,7 +68,7 @@
 
             // Função para capturar ações e enviá-las ao servidor
             function captureAction(event) {
-                if (isMaster) {
+                if (isMaster && !isExecuting) {
                     const element = event.target;
                     const tagName = element.tagName;
                     const action = event.type;
@@ -109,7 +132,8 @@
                         clickButton(payload);
                     } else if (command === 'replicateAction') {
                         if (!payload) return;
-                        executeReplicatedAction(payload);
+                        actionQueue.push({ payload });
+                        if (!isProcessing) processActionQueue(); // Inicia o processamento se a fila não estiver sendo processada
                     }
                 });
             });
@@ -184,7 +208,7 @@
                 }
             }
 
-            // Adiciona evento de teclado para tornar-se mestre com Ctrl+M
+            // Adiciona evento de teclado para tornar-se mestre com Ctrl+M e definir atraso máximo com Ctrl+D
             document.addEventListener('keydown', (event) => {
                 if (event.ctrlKey && event.key === 'm') {
                     isMaster = true;
@@ -195,6 +219,12 @@
                     // Enviar comando para clicar em um botão com um seletor específico
                     const selector = 'button.exemplo'; // Troque pelo seletor do botão que deseja controlar
                     sendCommand('button:click', selector);
+                } else if (event.ctrlKey && event.key === 'd') {
+                    const newMaxDelay = prompt('Digite o novo tempo máximo de atraso em segundos:');
+                    if (newMaxDelay) {
+                        maxDelay = parseInt(newMaxDelay) * 1000;
+                        alert(`Novo tempo máximo de atraso definido para ${maxDelay / 1000} segundos.`);
+                    }
                 }
             });
 
