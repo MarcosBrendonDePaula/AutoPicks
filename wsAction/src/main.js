@@ -65,11 +65,11 @@ io.on('connection', (socket) => {
 
 // Iniciando os servidores WebSocket
 httpServerWS.listen(PORT_WS_HTTP, () => {
-    console.log(`WebSocket HTTP Server is running on http://localhost:${PORT_WS_HTTP}`);
+    console.log(`WebSocket HTTP Server is running on http://127.0.0.1:${PORT_WS_HTTP}`);
 });
 
 httpsServerWS.listen(PORT_WS_HTTPS, () => {
-    console.log(`WebSocket HTTPS Server is running on https://localhost:${PORT_WS_HTTPS}`);
+    console.log(`WebSocket HTTPS Server is running on https://127.0.0.1:${PORT_WS_HTTPS}`);
 });
 
 // Servidor HTTP para servir o arquivo client.js
@@ -92,7 +92,7 @@ const httpServer = http.createServer((req, res) => {
 });
 
 httpServer.listen(PORT_HTTP, () => {
-    console.log(`HTTP Server is running on http://localhost:${PORT_HTTP}`);
+    console.log(`HTTP Server is running on http://127.0.0.1:${PORT_HTTP}`);
 });
 
 // Interface de linha de comando (CLI) para enviar comandos
