@@ -2,6 +2,7 @@
   "name": "wsaction",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -12,7 +13,8 @@
   "dependencies": {
     "fs": "^0.0.1-security",
     "readline": "^1.3.0",
-    "socket.io": "^4.7.5"
+    "socket.io": "^4.7.5",
+    "tls": "^0.0.1"
   },
   "devDependencies": {
     "@types/bun": "latest"

@@ -1,16 +1,20 @@
-const http = require('http');
-const https = require('https');
-const fs = require('fs');
-const path = require('path');
-const socketIo = require('socket.io');
-const readline = require('readline');
-const { execSync } = require('child_process');
+import http from 'http';
+import https from 'https';
+import fs from 'fs';
+import path from 'path';
+import { Server as socketIo } from 'socket.io';
+import readline from 'readline';
+import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
 const PORT_WS_HTTP = 9514;
 const PORT_WS_HTTPS = 9515;
 const PORT_HTTP = 8080;
 
 // Caminhos dos arquivos de certificado
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.resolve();
 const keyPath = path.resolve(__dirname, 'key.pem');
 const certPath = path.resolve(__dirname, 'certificate.pem');
 
@@ -18,11 +22,15 @@ const certPath = path.resolve(__dirname, 'certificate.pem');
 function generateCertificates() {
     if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
         console.log('Certificados não encontrados. Gerando certificados autoassinados...');
-        execSync(`openssl genrsa -out ${keyPath} 2048`);
-        execSync(`openssl req -new -key ${keyPath} -out csr.pem -subj "/CN=localhost"`);
-        execSync(`openssl x509 -req -days 365 -in csr.pem -signkey ${keyPath} -out ${certPath}`);
-        fs.unlinkSync('csr.pem'); // Remover CSR após a criação do certificado
-        console.log('Certificados gerados.');
+        try {
+            execSync(`openssl genrsa -out ${keyPath} 2048`);
+            execSync(`openssl req -new -key ${keyPath} -out csr.pem -subj "/CN=localhost"`);
+            execSync(`openssl x509 -req -days 365 -in csr.pem -signkey ${keyPath} -out ${certPath}`);
+            fs.unlinkSync('csr.pem'); // Remover CSR após a criação do certificado
+            console.log('Certificados gerados.');
+        } catch (error) {
+            console.error('Erro ao gerar certificados:', error);
+        }
     }
 }
 
@@ -38,7 +46,7 @@ const httpsOptionsWS = {
 const httpsServerWS = https.createServer(httpsOptionsWS);
 
 // Inicializando o Socket.IO para ambos os servidores
-const io = socketIo({
+const io = new socketIo({
     cors: {
         origin: '*' // Permitindo acesso de qualquer origem (CORS)
     }
