@@ -6,15 +6,16 @@ const path = require('path');
 const socketIo = require('socket.io');
 const readline = require('readline');
 const { execSync } = require('child_process');
-const ModuleController = require('../extensions')
 
+process.execDir = path.dirname(process.execPath)
+const ModuleController = require('../extensions')
 const PORT_WS_HTTP = 9514;
 const PORT_WS_HTTPS = 9515;
 const PORT_HTTP = 8080;
+const keyPath = path.resolve(process.execDir, 'key.pem');
+const certPath = path.resolve(process.execDir, 'certificate.pem');
 
-// Caminhos dos arquivos de certificado
-const keyPath = path.resolve(__dirname, 'key.pem');
-const certPath = path.resolve(__dirname, 'certificate.pem');
+console.log(`EXT_PATH:${path.resolve(process.execDir, 'extensions')}`)
 
 // Função para criar certificados se não existirem
 function generateCertificates() {
@@ -37,7 +38,7 @@ const cors = require('cors');
 app.use(cors());
 
 // Servir arquivos estáticos
-app.use(express.static(path.join(__dirname)));
+app.use(express.static(path.join(process.execDir)));
 // Habilitando CORS para todas as rotas
 app.use(cors());
 
@@ -114,8 +115,8 @@ function showMenu() {
         }
         
     }
-
     console.log(menuText);
+    
 }
 
 function listConnectedClients() {

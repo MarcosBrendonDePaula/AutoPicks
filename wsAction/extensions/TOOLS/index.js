@@ -1,10 +1,9 @@
-const express = require("express");
 const fs = require('fs');
 const path = require('path');
 
-module.exports = (WSIO, APP, RL) => {
+module.exports = (WSIO, APP, RL, EXPRESS) => {
     // Cria um novo roteador para a extensão
-    const ROUTER = express.Router();
+    const ROUTER = EXPRESS.Router();
     
     // Nome da extensão
     const NAME = "TOOLS";
@@ -67,7 +66,7 @@ module.exports = (WSIO, APP, RL) => {
 
     // Define a rota para retornar o arquivo client.js
     ROUTER.get("/client", (req, res) => {
-        const filePath = path.resolve(__dirname, './client.js'); // Ajuste o caminho conforme necessário
+        const filePath = path.resolve(process.execDir, 'extensions', 'NAME', './client.js'); // Ajuste o caminho conforme necessário
         res.sendFile(filePath, (err) => {
             if (err) {
                 res.status(500).send('Erro ao carregar o arquivo.');

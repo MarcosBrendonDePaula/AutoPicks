@@ -1,12 +1,12 @@
 const fs = require('fs');
 const path = require('path');
-
+const express = require("express");
 const ModuleController = (() => {
     // Variáveis globais
     let APP = null;
     let WSIO = null;
     let RL = null;
-    const extensionsPath = path.resolve(__dirname, '../extensions');
+    const extensionsPath = path.resolve(process.execDir, 'extensions');
     
     const EXTENSIONS = {
         ENABLED: [],
@@ -70,7 +70,7 @@ const ModuleController = (() => {
                 if (typeof extensionModule === 'function') {
                     let EXT = {};
                     try {
-                        EXT = extensionModule(WSIO, APP, RL);
+                        EXT = extensionModule(WSIO, APP, RL, express);
                         console.log(`Extensão carregada: ${EXT.NAME}`);
                     
                         if (EXT.ENABLED) {
