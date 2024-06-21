@@ -7,7 +7,13 @@ const socketIo = require('socket.io');
 const readline = require('readline');
 const { execSync } = require('child_process');
 
-process.execDir = path.dirname(process.execPath)
+// Verificar o executável e definir o diretório de execução
+if (process.execPath.indexOf("bun.exe") > 0 || process.execPath.indexOf("node.exe") > 0) {
+    process.execDir = path.dirname(__dirname);
+} else {
+    process.execDir = path.dirname(process.execPath);
+}
+
 const ModuleController = require('../extensions')
 const PORT_WS_HTTP = 9514;
 const PORT_WS_HTTPS = 9515;
