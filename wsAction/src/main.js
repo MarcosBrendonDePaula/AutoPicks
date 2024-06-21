@@ -1,3 +1,4 @@
+const express = require('express');
 const http = require('http');
 const https = require('https');
 const fs = require('fs');
@@ -5,6 +6,7 @@ const path = require('path');
 const socketIo = require('socket.io');
 const readline = require('readline');
 const { execSync } = require('child_process');
+const ModuleController = require('../extensions')
 
 const PORT_WS_HTTP = 9514;
 const PORT_WS_HTTPS = 9515;
@@ -29,13 +31,23 @@ function generateCertificates() {
 // Gerar certificados se necessário
 generateCertificates();
 
-// Criando servidores HTTP e HTTPS para WebSocket
-const httpServerWS = http.createServer();
+// Inicializando o Express
+const app = express();
+const cors = require('cors');
+app.use(cors());
+
+// Servir arquivos estáticos
+app.use(express.static(path.join(__dirname)));
+// Habilitando CORS para todas as rotas
+app.use(cors());
+
+// Inicializando servidores HTTP e HTTPS para WebSocket
+const httpServerWS = http.createServer(app);
 const httpsOptionsWS = {
     key: fs.readFileSync(keyPath),
     cert: fs.readFileSync(certPath),
 };
-const httpsServerWS = https.createServer(httpsOptionsWS);
+const httpsServerWS = https.createServer(httpsOptionsWS, app);
 
 // Inicializando o Socket.IO para ambos os servidores
 const io = socketIo({
@@ -49,17 +61,12 @@ io.attach(httpsServerWS);
 const connectedClients = new Set(); // Usando Set para armazenar clientes conectados
 
 io.on('connection', (socket) => {
-    console.log('Um cliente se conectou:', socket.id);
+    // console.log('Um cliente se conectou:', socket.id);
     connectedClients.add(socket);
-
+    ModuleController.initIoToSocket(socket)
     socket.on('disconnect', () => {
-        console.log('Cliente desconectado:', socket.id);
+        // console.log('Cliente desconectado:', socket.id);
         connectedClients.delete(socket);
-    });
-
-    // Recebendo comandos do mestre e retransmitindo para todos os clientes conectados
-    socket.on('master:command', (data) => {
-        io.emit('command', data);
     });
 });
 
@@ -72,24 +79,8 @@ httpsServerWS.listen(PORT_WS_HTTPS, () => {
     console.log(`WebSocket HTTPS Server is running on https://127.0.0.1:${PORT_WS_HTTPS}`);
 });
 
-// Servidor HTTP para servir o arquivo client.js
-const httpServer = http.createServer((req, res) => {
-    if (req.url === '/client.js') {
-        const filePath = path.join(__dirname, 'client.js');
-        fs.readFile(filePath, (err, data) => {
-            if (err) {
-                res.writeHead(500, { 'Content-Type': 'text/plain' });
-                res.end('Erro ao ler o arquivo client.js');
-            } else {
-                res.writeHead(200, { 'Content-Type': 'application/javascript' });
-                res.end(data);
-            }
-        });
-    } else {
-        res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.end('Arquivo não encontrado');
-    }
-});
+// Servidor HTTP usando Express para servir arquivos estáticos
+const httpServer = http.createServer(app);
 
 httpServer.listen(PORT_HTTP, () => {
     console.log(`HTTP Server is running on http://127.0.0.1:${PORT_HTTP}`);
@@ -101,18 +92,30 @@ const rl = readline.createInterface({
     output: process.stdout
 });
 
+ModuleController.init(io, app, rl)
+
+var ExtenssionsMenu = {}
+
 function showMenu() {
-    console.log(`
+    let menuText = `
     Escolha uma opção:
     1. Listar clientes conectados
-    2. Enviar comando para abrir uma página
-    3. Enviar comando para coletar recompensas
-    4. Enviar comando global de controle
-    5. Enviar comando para clicar em um botão
-    6. Enviar comando para recarregar a página
-    7. Definir atraso máximo
-    8. Sair
-    `);
+    2. Sair
+    `;
+
+    ExtenssionsMenu = {}
+    // Adicionar comandos das extensões ao menu
+    let optionNumber = 3;
+    for (const [extension, commands] of Object.entries(ModuleController.COMMANDS.CLI)) {
+        for (const [event, command] of Object.entries(commands)){
+            menuText += `${optionNumber}. ${extension}.${event}: ${command.description}\n`;
+            ExtenssionsMenu[optionNumber] = command._function
+            optionNumber++;
+        }
+        
+    }
+
+    console.log(menuText);
 }
 
 function listConnectedClients() {
@@ -123,50 +126,7 @@ function listConnectedClients() {
     showMenu();
 }
 
-function promptOpenPage() {
-    rl.question('Digite a URL da página para abrir: ', (url) => {
-        io.emit('command', { command: 'browser:openPage', payload: url });
-        console.log(`Comando para abrir a página "${url}" enviado.`);
-        showMenu();
-    });
-}
 
-function promptCollectRewards() {
-    io.emit('command', { command: 'blockpick:collectRewards' });
-    console.log('Comando para coletar recompensas enviado.');
-    showMenu();
-}
-
-function promptGlobalControl() {
-    rl.question('Digite o valor para preencher os inputs: ', (value) => {
-        io.emit('command', { command: 'global:control', payload: value });
-        console.log('Comando global de controle enviado.');
-        showMenu();
-    });
-}
-
-function promptClickButton() {
-    rl.question('Digite o seletor do botão para clicar: ', (selector) => {
-        io.emit('command', { command: 'button:click', payload: selector });
-        console.log(`Comando para clicar no botão "${selector}" enviado.`);
-        showMenu();
-    });
-}
-
-function promptReloadPage() {
-    io.emit('command', { command: 'browser:reloadPage' });
-    console.log('Comando para recarregar a página enviado.');
-    showMenu();
-}
-
-function promptSetMaxDelay() {
-    rl.question('Digite o novo tempo máximo de atraso em segundos: ', (delay) => {
-        const maxDelay = parseInt(delay) * 1000;
-        io.emit('command', { command: 'setMaxDelay', data: maxDelay });
-        console.log(`Novo tempo máximo de atraso definido para ${delay} segundos e enviado para todos os clientes.`);
-        showMenu();
-    });
-}
 
 rl.on('line', (input) => {
     const option = input.trim();
@@ -175,30 +135,19 @@ rl.on('line', (input) => {
             listConnectedClients();
             break;
         case '2':
-            promptOpenPage();
-            break;
-        case '3':
-            promptCollectRewards();
-            break;
-        case '4':
-            promptGlobalControl();
-            break;
-        case '5':
-            promptClickButton();
-            break;
-        case '6':
-            promptReloadPage();
-            break;
-        case '7':
-            promptSetMaxDelay();
-            break;
-        case '8':
             rl.close();
             break;
         default:
-            console.log('Opção inválida. Tente novamente.');
-            showMenu();
+            if(ExtenssionsMenu[option] == undefined){
+                console.log('Opção inválida. Tente novamente.');
+                showMenu();
+            }else{
+                ExtenssionsMenu[option]()
+                // showMenu()
+                break
+            }
     }
+    ;
 });
 
 showMenu();
